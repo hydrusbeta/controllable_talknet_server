@@ -50,7 +50,7 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install --no-cache-dir --upgra
 RUN echo "protobuf==3.20.3" >> ~/hay_say/controllable_talknet/requirements.txt; \
     echo "hmmlearn==0.2.5" >> ~/hay_say/controllable_talknet/requirements.txt; \
     echo "git+https://github.com/SortAnon/NeMo.git@ef81d2e" >> ~/hay_say/controllable_talknet/requirements.txt; \
-    sed -i '1 i\# This file has been modified for the Hay Say project beginning around April 2023.\n\n# As required by the license for Controllable TalkNet, this modified version of\n# Controllable TalkNet is released under the GNU Affero General Public License\n# along with the additional conditions under section 7 of the original license,\n# which can be found here:\n#   https://github.com/SortAnon/ControllableTalkNet/blob/128b1c18b4d77a1726414bab764268d3e6dd68ca/LICENSE\n\n' ~/hay_say/controllable_talknet/requirements.txt
+    sed -i '1 i\# This file was modified for the Hay Say project in April 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n\n' ~/hay_say/controllable_talknet/requirements.txt
 
 # Install all python dependencies for controllable_talknet
 RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install --no-cache-dir -r ~/hay_say/controllable_talknet/requirements.txt --extra-index-url https://download.pytorch.org/whl/cu111
@@ -77,6 +77,18 @@ EXPOSE 8050
 # Create the models directory. The server will place symbolic links in here that point to the 
 # actual model files.
 RUN mkdir /root/hay_say/controllable_talknet/models
+
+# Modify several files to allow Controllable TalkNet to run on CPU if a GPU is not available
+RUN sed -i 's/DEVICE = "cuda:0"/DEVICE = "cuda" if torch.cuda.is_available() else "cpu"/' ~/hay_say/controllable_talknet/mycroft_talknet.py; \
+    sed -i 's/DEVICE = "cuda:0"/DEVICE = "cuda" if torch.cuda.is_available() else "cpu"/' ~/hay_say/controllable_talknet/controllable_talknet.py; \
+    sed -i '400 i\        device = "cuda" if torch.cuda.is_available() else "cpu"\n' ~/hay_say/controllable_talknet/core/extract.py; \
+    sed -i 's/device="cuda:0"/device=device/' ~/hay_say/controllable_talknet/core/extract.py; \
+    sed -i '8 i\    device = "cuda" if torch.cuda.is_available() else "cpu"' ~/hay_say/controllable_talknet/hifi-gan/denoiser.py; \
+    sed -i 's/.cuda()/.to(Denoiser.device)/' ~/hay_say/controllable_talknet/hifi-gan/denoiser.py; \
+    sed -i '1 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/controllable_talknet.py; \
+    sed -i '1 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/mycroft_talknet.py; \
+    sed -i '1 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/hifi-gan/denoiser.py; \
+    sed -i '16 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/core/extract.py;
 
 # Controllable Talknet downloads some models, e.g. the NeMo TTS phonemes model, when the 
 # controllable_talknet module is first loaded. Let's Load it ahead of time now so the user doesn't need 
