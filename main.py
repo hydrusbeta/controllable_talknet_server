@@ -31,12 +31,12 @@ def generate() -> (str, int):
     tmp_files = []
     try:
         ensure_pretrained_model_links_exist()
-        user_text, input_filename_sans_extension, character, pitch_options, output_filename_sans_extension \
-            = parse_inputs()
+        user_text, input_filename_sans_extension, character, pitch_factor, pitch_options, \
+            output_filename_sans_extension = parse_inputs()
         tmp_input_file = copy_input_audio(input_filename_sans_extension)
         tmp_files = tmp_files + [tmp_input_file] if tmp_input_file else tmp_files
         link_model_path(character)
-        execute_program(user_text, input_filename_sans_extension, character, pitch_options)
+        execute_program(user_text, input_filename_sans_extension, character, pitch_factor, pitch_options)
         tmp_output_file = get_temp_output_path()
         tmp_files = tmp_files + [tmp_output_file] if tmp_output_file else tmp_files
         copy_output_audio(tmp_output_file, output_filename_sans_extension)
@@ -72,16 +72,29 @@ def ensure_pretrained_model_links_exist():
 
 
 def parse_inputs():
-    # todo: add other pitch options, like autotune and adjust input pitch
     check_for_missing_keys()
     user_text = request.json['Inputs']['User Text']
     input_filename_sans_extension = request.json['Inputs']['User Audio']
     character = request.json['Options']['Character']
-    disable_text = request.json['Options']['Disable Text']
     output_filename_sans_extension = request.json['Output File']
-    check_types(user_text, input_filename_sans_extension, character, disable_text, output_filename_sans_extension)
-    pitch_options = ['dra' if disable_text else '']
-    return user_text, input_filename_sans_extension, character, pitch_options, output_filename_sans_extension
+    pitch_factor = request.json['Options']['Pitch Factor']
+    disable_reference_audio = request.json['Options']['Disable Reference Audio']
+    auto_tune = request.json['Options']['Auto Tune']
+    reduce_metallic_sound = request.json['Options']['Reduce Metallic Sound']
+
+    # todo: check type for pitch_factor, auto_tune, and reduce_metallic_sound
+    check_types(user_text, input_filename_sans_extension, character, disable_reference_audio, output_filename_sans_extension)
+
+    # todo: all of this should be its own method
+    disable_reference_audio_str = 'dra' if disable_reference_audio else None
+    change_input_pitch = 'pf' if pitch_factor is not 0 else None
+    auto_tune_str = 'pc' if auto_tune else None
+    reduce_metallic_sound_str = 'srec' if reduce_metallic_sound else None
+    pitch_options = [disable_reference_audio_str, change_input_pitch, auto_tune_str, reduce_metallic_sound_str]
+    pitch_options = [option for option in pitch_options if option]  # removes all options that are "None"
+    pitch_options = pitch_options if pitch_options else ['']
+
+    return user_text, input_filename_sans_extension, character, pitch_factor, pitch_options, output_filename_sans_extension
 
 
 def check_for_missing_keys():
@@ -89,29 +102,29 @@ def check_for_missing_keys():
     missing_user_audio = ('Inputs' not in request.json.keys()) or ('User Audio' not in request.json['Inputs'].keys())
     missing_character = ('Options' not in request.json.keys()) or ('Character' not in request.json['Options'].keys())
     missing_disable_text = ('Options' not in request.json.keys()) \
-        or ('Disable Text' not in request.json['Options'].keys())
+        or ('Disable Reference Audio' not in request.json['Options'].keys())
     missing_output_filename = 'Output File' not in request.json.keys()
     if missing_user_text or missing_user_audio or missing_character or missing_disable_text or missing_output_filename:
         message = ('Missing "User Text" \n' if missing_user_text else '') \
                 + ('Missing "User Audio" \n' if missing_user_audio else '') \
                 + ('Missing "Character" \n' if missing_character else '') \
-                + ('Missing "Disable Text" \n' if missing_disable_text else '') \
+                + ('Missing "Disable Reference Audio" \n' if missing_disable_text else '') \
                 + ('Missing "Output File" +n' if missing_output_filename else '')
         raise BadInputException(message)
 
 
-def check_types(user_text, user_audio, character, disable_text, output_filename):
+def check_types(user_text, user_audio, character, disable_reference_audio, output_filename):
     wrong_type_user_text = not isinstance(user_text, str)
     wrong_type_user_audio = not isinstance(user_audio, str)
     wrong_type_character = not isinstance(character, str)
-    wrong_type_disable_text = not isinstance(disable_text, bool)
+    wrong_type_disable_text = not isinstance(disable_reference_audio, bool)
     wrong_type_output_filename = not isinstance(output_filename, str)
     if wrong_type_user_text or wrong_type_user_audio or wrong_type_character or wrong_type_disable_text \
             or wrong_type_output_filename:
         message = ('"User Text" should be a string \n' if wrong_type_user_text else '') \
                 + ('"User Audio" should be a string \n' if wrong_type_user_audio else '') \
                 + ('"Character" should be a string \n' if wrong_type_character else '') \
-                + ('"Disable Text" should be an bool \n' if wrong_type_disable_text else '') \
+                + ('"Disable Reference Audio" should be a bool \n' if wrong_type_disable_text else '') \
                 + ('"Output File" should be a string \n' if wrong_type_output_filename else '')
         raise BadInputException(message)
 
@@ -141,10 +154,11 @@ def copy_input_audio(input_filename_sans_extension):
     return target
 
 
-def execute_program(user_text, input_filename_sans_extension, character, pitch_options):
+def execute_program(user_text, input_filename_sans_extension, character, pitch_factor, pitch_options):
     # todo: redirect stdout to a log file.
-    subprocess.run([PYTHON_EXECUTABLE, INFERENCE_CODE_PATH,
-                    user_text, input_filename_sans_extension + TALKNET_INPUT_EXTENSION, character, *pitch_options])
+    subprocess.run([PYTHON_EXECUTABLE, INFERENCE_CODE_PATH, user_text,
+                    input_filename_sans_extension + TALKNET_INPUT_EXTENSION, character, str(pitch_factor),
+                    *pitch_options])
 
 
 def get_temp_output_path():
