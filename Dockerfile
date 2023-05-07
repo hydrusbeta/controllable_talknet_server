@@ -24,28 +24,28 @@ ARG HOME_DIR=/root
 # file and with Hay Say.
 RUN git clone -b main --single-branch -q https://github.com/SortAnon/ControllableTalkNet ~/hay_say/controllable_talknet
 WORKDIR $HOME_DIR/hay_say/controllable_talknet
-RUN git reset --hard ec3e8ebf3ea6785080128398d736cffa513863c3
+RUN git reset --hard 5ee364f5bb1fe63fcde2b690507bd7cd89bfe268
 
-# Download SortAnon's hifi-gan fork and checkout a specific commit that is known to work with this docker 
+# Download SortAnon's hifi-gan fork and checkout a specific commit that is known to work with this docker
 # file and with Hay Say.
 RUN git clone -b master --single-branch -q https://github.com/SortAnon/hifi-gan ~/hay_say/controllable_talknet/hifi-gan
 WORKDIR $HOME_DIR/hay_say/controllable_talknet/hifi-gan
-RUN git reset --hard b1a16bc71832c623fe88e5190d5a6674e40fe107
+RUN git reset --hard 38d31dd0612fd7ca16153dba1f6caf0b8309aa3c
 
 # Create virtual environments for SortAnon's Controllable TalkNet and Hay Say's
 # controllable_talknet_server
 RUN python3.8 -m venv ~/hay_say/.venvs/controllable_talknet; \
     python3.8 -m venv ~/hay_say/.venvs/controllable_talknet_server
 
-# Python virtual environments do not come with wheel, so we must install it. Upgrade pip while 
-# we're at it to handle modules that use PEP 517, and install cython which is required for building 
+# Python virtual environments do not come with wheel, so we must install it. Upgrade pip while
+# we're at it to handle modules that use PEP 517, and install cython which is required for building
 # other python packages. Specify a version number for numpy or else it will install one that conflicts
 # with Controllable Talknet's requirements file.
 RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install --no-cache-dir --upgrade wheel pip cython numpy==1.19.5; \
     ~/hay_say/.venvs/controllable_talknet_server/bin/pip install --no-cache-dir --upgrade wheel pip cython numpy==1.19.5
 
-# Specify versions of protobuf and hmmlearn in the requirements file to avoid dependency issues and add 
-# SortAnon's Nemo. Since the requirements file has been modified, we must also display a notice, as per 
+# Specify versions of protobuf and hmmlearn in the requirements file to avoid dependency issues and add
+# SortAnon's Nemo. Since the requirements file has been modified, we must also display a notice, as per
 # the license terms.
 RUN echo "protobuf==3.20.3" >> ~/hay_say/controllable_talknet/requirements.txt; \
     echo "hmmlearn==0.2.5" >> ~/hay_say/controllable_talknet/requirements.txt; \
@@ -56,7 +56,7 @@ RUN echo "protobuf==3.20.3" >> ~/hay_say/controllable_talknet/requirements.txt; 
 RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install --no-cache-dir -r ~/hay_say/controllable_talknet/requirements.txt --extra-index-url https://download.pytorch.org/whl/cu111
 
 # There is a weird dependency issue between pesq, numpy, numba, and NeMo. pesq somehow gets compiled
-# against the wrong version of numpy when numba (a dependency of NeMo) is installed, so we must recompile 
+# against the wrong version of numpy when numba (a dependency of NeMo) is installed, so we must recompile
 # it. This is a known issue described here: https://github.com/NVIDIA/NeMo/issues/3658
 RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
     ~/hay_say/.venvs/controllable_talknet/bin/python -m pip install --no-cache-dir pesq==0.0.2
@@ -74,21 +74,9 @@ RUN git clone https://github.com/hydrusbeta/controllable_talknet_server ~/hay_sa
 EXPOSE 6574
 EXPOSE 8050
 
-# Create the models directory. The server will place symbolic links in here that point to the 
+# Create the models directory. The server will place symbolic links in here that point to the
 # actual model files.
 RUN mkdir /root/hay_say/controllable_talknet/models
-
-# Modify several files to allow Controllable TalkNet to run on CPU if a GPU is not available
-RUN sed -i 's/DEVICE = "cuda:0"/DEVICE = "cuda" if torch.cuda.is_available() else "cpu"/' ~/hay_say/controllable_talknet/mycroft_talknet.py; \
-    sed -i 's/DEVICE = "cuda:0"/DEVICE = "cuda" if torch.cuda.is_available() else "cpu"/' ~/hay_say/controllable_talknet/controllable_talknet.py; \
-    sed -i '400 i\        device = "cuda" if torch.cuda.is_available() else "cpu"\n' ~/hay_say/controllable_talknet/core/extract.py; \
-    sed -i 's/device="cuda:0"/device=device/' ~/hay_say/controllable_talknet/core/extract.py; \
-    sed -i '8 i\    device = "cuda" if torch.cuda.is_available() else "cpu"' ~/hay_say/controllable_talknet/hifi-gan/denoiser.py; \
-    sed -i 's/.cuda()/.to(Denoiser.device)/' ~/hay_say/controllable_talknet/hifi-gan/denoiser.py; \
-    sed -i '1 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/controllable_talknet.py; \
-    sed -i '1 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/mycroft_talknet.py; \
-    sed -i '1 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/hifi-gan/denoiser.py; \
-    sed -i '16 i\# This file was modified for the Hay Say project in early May 2023. \n# This modified version is hereby released under the same GNU Affero General \n# Public License located at controllable_talknet/LICENSE, along with any \n# conditions added under section 7.\n' ~/hay_say/controllable_talknet/core/extract.py;
 
 # Controllable Talknet downloads some models, e.g. the NeMo TTS phonemes model, when the 
 # controllable_talknet module is first loaded. Let's Load it ahead of time now so the user doesn't need 

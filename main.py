@@ -87,7 +87,7 @@ def parse_inputs():
 
     # todo: all of this should be its own method
     disable_reference_audio_str = 'dra' if disable_reference_audio else None
-    change_input_pitch = 'pf' if pitch_factor is not 0 else None
+    change_input_pitch = 'pf' if pitch_factor != 0 else None
     auto_tune_str = 'pc' if auto_tune else None
     reduce_metallic_sound_str = 'srec' if reduce_metallic_sound else None
     pitch_options = [disable_reference_audio_str, change_input_pitch, auto_tune_str, reduce_metallic_sound_str]
@@ -115,14 +115,14 @@ def check_for_missing_keys():
 
 def check_types(user_text, user_audio, character, disable_reference_audio, output_filename):
     wrong_type_user_text = not isinstance(user_text, str)
-    wrong_type_user_audio = not isinstance(user_audio, str)
+    wrong_type_user_audio = not (isinstance(user_audio, str) or user_audio is None)
     wrong_type_character = not isinstance(character, str)
     wrong_type_disable_text = not isinstance(disable_reference_audio, bool)
     wrong_type_output_filename = not isinstance(output_filename, str)
     if wrong_type_user_text or wrong_type_user_audio or wrong_type_character or wrong_type_disable_text \
             or wrong_type_output_filename:
         message = ('"User Text" should be a string \n' if wrong_type_user_text else '') \
-                + ('"User Audio" should be a string \n' if wrong_type_user_audio else '') \
+                + ('"User Audio" should be a string or null \n' if wrong_type_user_audio else '') \
                 + ('"Character" should be a string \n' if wrong_type_character else '') \
                 + ('"Disable Reference Audio" should be a bool \n' if wrong_type_disable_text else '') \
                 + ('"Output File" should be a string \n' if wrong_type_output_filename else '')
@@ -144,6 +144,8 @@ def copy_input_audio(input_filename_sans_extension):
     """Temporarily copy the input file to the location where Controllable Talknet expects to find it."""
     # todo: make sure the input file does not have the same name as any other file already in CONTROLLABLE_TALKNET_ROOT.
     # todo: make sure we are supplying a format that controllable-talknet can use.
+    if input_filename_sans_extension is None:
+        return None
     target = os.path.join(ARCHITECTURE_ROOT, input_filename_sans_extension + TALKNET_INPUT_EXTENSION)
     try:
         array, samplerate = read_audio_from_cache(PREPROCESSED_DIR, input_filename_sans_extension)
@@ -156,9 +158,15 @@ def copy_input_audio(input_filename_sans_extension):
 
 def execute_program(user_text, input_filename_sans_extension, character, pitch_factor, pitch_options):
     # todo: redirect stdout to a log file.
-    subprocess.run([PYTHON_EXECUTABLE, INFERENCE_CODE_PATH, user_text,
-                    input_filename_sans_extension + TALKNET_INPUT_EXTENSION, character, str(pitch_factor),
-                    *pitch_options])
+    arguments = [
+        user_text,
+        (input_filename_sans_extension + TALKNET_INPUT_EXTENSION) if input_filename_sans_extension else '-',
+        character,
+        str(pitch_factor),
+        *pitch_options
+    ]
+    arguments = [argument for argument in arguments if argument]  # Removes all "None" objects from the list
+    subprocess.run([PYTHON_EXECUTABLE, INFERENCE_CODE_PATH, *arguments])
 
 
 def get_temp_output_path():
