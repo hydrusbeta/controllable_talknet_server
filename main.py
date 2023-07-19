@@ -2,6 +2,8 @@ from hay_say_common import ROOT_DIR, PREPROCESSED_DIR, OUTPUT_DIR, create_link, 
     construct_full_error_message, read_audio_from_cache, read_audio, save_audio_to_cache, get_singleton_file
 
 from flask import Flask, request
+import jsonschema
+from jsonschema.exceptions import ValidationError
 
 import os
 import os.path
@@ -30,7 +32,6 @@ def generate() -> (str, int):
     #  as we go
     tmp_files = []
     try:
-        ensure_pretrained_model_links_exist()
         user_text, input_filename_sans_extension, character, pitch_factor, pitch_options, \
             output_filename_sans_extension = parse_inputs()
         tmp_input_file = copy_input_audio(input_filename_sans_extension)
@@ -58,34 +59,57 @@ def generate() -> (str, int):
     return json.dumps(response, sort_keys=True, indent=4), code
 
 
-def ensure_pretrained_model_links_exist():
-    """Create symbolic links to the pretrained models so that Controllable TalkNet can find them."""
-    hifirec_path = get_model_path(ARCHITECTURE_NAME, 'hifirec')
-    hifisr_path = get_model_path(ARCHITECTURE_NAME, 'hifisr')
-    vqgan_path = get_model_path(ARCHITECTURE_NAME, 'vqgan32_universal_57000.ckpt')
-    hifirec_symlink = os.path.join(ARCHITECTURE_ROOT, 'models', 'hifirec')
-    hifisr_symlink = os.path.join(ARCHITECTURE_ROOT, 'models', 'hifisr')
-    vqgan_symlink = os.path.join(ARCHITECTURE_ROOT, 'models', 'vqgan32_universal_57000.ckpt')
-    create_link(hifirec_path, hifirec_symlink)
-    create_link(hifisr_path, hifisr_symlink)
-    create_link(vqgan_path, vqgan_symlink)
-
-
 def parse_inputs():
-    check_for_missing_keys()
+    schema = {
+        'type': 'object',
+        'properties': {
+            'Inputs': {
+                'type': 'object',
+                'properties': {
+                    'User Text': {'type': 'string'},
+                    'User Audio': {'type': 'string'}
+                },
+                'additionalProperties': False,
+                'required': ['User Text']
+            },
+            'Options': {
+                'type': 'object',
+                'properties': {
+                    'Disable Reference Audio': {'type': 'boolean'},
+                    'Character': {'type': 'string'},
+                    'Pitch Factor': {'type': 'integer'},
+                    'Auto Tune': {'type': 'boolean'},
+                    'Reduce Metallic Sound': {'type': 'boolean'}
+                },
+                'additionalProperties': False,
+                'required': ['Disable Reference Audio', 'Character', 'Pitch Factor', 'Auto Tune', 'Reduce Metallic Sound']
+            },
+            'Output File': {'type': 'string'}
+        },
+        'additionalProperties': False,
+        'required': ['Inputs', 'Options', 'Output File']
+    }
+
+    try:
+        jsonschema.validate(instance=request.json, schema=schema)
+    except ValidationError as e:
+        raise BadInputException(e.Message)
+
     user_text = request.json['Inputs']['User Text']
     input_filename_sans_extension = request.json['Inputs']['User Audio']
-    character = request.json['Options']['Character']
-    output_filename_sans_extension = request.json['Output File']
-    pitch_factor = request.json['Options']['Pitch Factor']
     disable_reference_audio = request.json['Options']['Disable Reference Audio']
+    character = request.json['Options']['Character']
+    pitch_factor = request.json['Options']['Pitch Factor']
     auto_tune = request.json['Options']['Auto Tune']
     reduce_metallic_sound = request.json['Options']['Reduce Metallic Sound']
+    output_filename_sans_extension = request.json['Output File']
 
-    # todo: check type for pitch_factor, auto_tune, and reduce_metallic_sound
-    check_types(user_text, input_filename_sans_extension, character, disable_reference_audio, output_filename_sans_extension)
+    pitch_options = assemble_pitch_options(disable_reference_audio, pitch_factor, auto_tune, reduce_metallic_sound)
 
-    # todo: all of this should be its own method
+    return user_text, input_filename_sans_extension, character, pitch_factor, pitch_options, output_filename_sans_extension
+
+
+def assemble_pitch_options(disable_reference_audio, pitch_factor, auto_tune, reduce_metallic_sound):
     disable_reference_audio_str = 'dra' if disable_reference_audio else None
     change_input_pitch = 'pf' if pitch_factor != 0 else None
     auto_tune_str = 'pc' if auto_tune else None
@@ -93,40 +117,7 @@ def parse_inputs():
     pitch_options = [disable_reference_audio_str, change_input_pitch, auto_tune_str, reduce_metallic_sound_str]
     pitch_options = [option for option in pitch_options if option]  # removes all options that are "None"
     pitch_options = pitch_options if pitch_options else ['']
-
-    return user_text, input_filename_sans_extension, character, pitch_factor, pitch_options, output_filename_sans_extension
-
-
-def check_for_missing_keys():
-    missing_user_text = ('Inputs' not in request.json.keys()) or ('User Text' not in request.json['Inputs'].keys())
-    missing_user_audio = ('Inputs' not in request.json.keys()) or ('User Audio' not in request.json['Inputs'].keys())
-    missing_character = ('Options' not in request.json.keys()) or ('Character' not in request.json['Options'].keys())
-    missing_disable_text = ('Options' not in request.json.keys()) \
-        or ('Disable Reference Audio' not in request.json['Options'].keys())
-    missing_output_filename = 'Output File' not in request.json.keys()
-    if missing_user_text or missing_user_audio or missing_character or missing_disable_text or missing_output_filename:
-        message = ('Missing "User Text" \n' if missing_user_text else '') \
-                + ('Missing "User Audio" \n' if missing_user_audio else '') \
-                + ('Missing "Character" \n' if missing_character else '') \
-                + ('Missing "Disable Reference Audio" \n' if missing_disable_text else '') \
-                + ('Missing "Output File" +n' if missing_output_filename else '')
-        raise BadInputException(message)
-
-
-def check_types(user_text, user_audio, character, disable_reference_audio, output_filename):
-    wrong_type_user_text = not isinstance(user_text, str)
-    wrong_type_user_audio = not (isinstance(user_audio, str) or user_audio is None)
-    wrong_type_character = not isinstance(character, str)
-    wrong_type_disable_text = not isinstance(disable_reference_audio, bool)
-    wrong_type_output_filename = not isinstance(output_filename, str)
-    if wrong_type_user_text or wrong_type_user_audio or wrong_type_character or wrong_type_disable_text \
-            or wrong_type_output_filename:
-        message = ('"User Text" should be a string \n' if wrong_type_user_text else '') \
-                + ('"User Audio" should be a string or null \n' if wrong_type_user_audio else '') \
-                + ('"Character" should be a string \n' if wrong_type_character else '') \
-                + ('"Disable Reference Audio" should be a bool \n' if wrong_type_disable_text else '') \
-                + ('"Output File" should be a string \n' if wrong_type_output_filename else '')
-        raise BadInputException(message)
+    return pitch_options
 
 
 class BadInputException(Exception):

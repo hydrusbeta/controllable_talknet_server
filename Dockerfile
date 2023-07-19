@@ -64,7 +64,7 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install \
 	crepe==0.0.12 \
 	resampy==0.2.2 \
 	ffmpeg-python==0.2.0 \
-	tqdm \
+	tqdm==4.65.0 \
 	gdown==4.6.0 \
 	editdistance==0.5.3 \
 	ipywidgets==7.6.3 \
@@ -92,6 +92,13 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
 RUN ~/hay_say/.venvs/controllable_talknet_server/bin/pip install \
     --no-cache-dir \
     hay-say-common==0.1.4
+    jsonschema==4.17.3
+
+# Download the VQGAN and HiFi-GAN reconstruction models and the super resolution HiFi-GAN model.
+RUN mkdir -p ~/hay_say/temp_downloads/pretrained_models && \
+    wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1wlilvBtlBiAUEqqdqE0AEqo-UKx2X_cL' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1wlilvBtlBiAUEqqdqE0AEqo-UKx2X_cL" -O /root/hay_say/temp_downloads/pretrained_models/vqgan32_universal_57000.ckpt && rm -rf /tmp/cookies.txt &&\
+    wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=12gRIdg65xWiSScvFUFPT5JoPRsijQN90' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=12gRIdg65xWiSScvFUFPT5JoPRsijQN90" -O /root/hay_say/temp_downloads/pretrained_models/hifirec && rm -rf /tmp/cookies.txt &&\
+    wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=14fOprFAIlCQkVRxsfInhEPG0n-xN4QOa' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=14fOprFAIlCQkVRxsfInhEPG0n-xN4QOa" -O /root/hay_say/temp_downloads/pretrained_models/hifisr && rm -rf /tmp/cookies.txt
 
 # Expose port 6574, the port that Hay Say uses for controllable_talknet.
 # Also expose port 8050, in case someone want to use the original Controllable TalkNet UI.
@@ -113,8 +120,8 @@ RUN git reset --hard 5ee364f5bb1fe63fcde2b690507bd7cd89bfe268
 #     sed -i -e '28d;31,32d;329,394d;462,479d' ~/hay_say/controllable_talknet/core/extract.py &&\
 #     ~/hay_say/.venvs/controllable_talknet/bin/pip uninstall -y tensorflow tensorflow-hub crepe
 
-# Create the models directory. The server will place symbolic links in here that point to the
-# actual model files.
+# Create the models directory. The server will place symbolic links in here that point to the actual model files. The
+# VQGAN, Hi-fidelity reconstruction and super-resolution HiFi-GAN models go in here, too.
 RUN mkdir /root/hay_say/controllable_talknet/models
 
 # Download SortAnon's hifi-gan fork and checkout a specific commit that is known to work with this docker
@@ -126,6 +133,9 @@ RUN git reset --hard 42c270d4f79a6966edf92ef9ee17e2bc8b9977b5
 # Add command line functionality to Controllable TalkNet.
 RUN git clone https://github.com/hydrusbeta/controllable_talknet_command_line ~/hay_say/controllable_talknet_command_line && \
     cp ~/hay_say/controllable_talknet_command_line/command_line_interface.py ~/hay_say/controllable_talknet/;
+
+# Move the VQGAN and HiFi-GAN reconstruction models and the super resolution HiFi-GAN model to the expected directory:
+RUN mv ~/hay_say/temp_downloads/pretrained_models/* /root/hay_say/controllable_talknet/models/
 
 # Download the Hay Say Interface code.
 RUN git clone https://github.com/hydrusbeta/controllable_talknet_server ~/hay_say/controllable_talknet_server/
