@@ -75,6 +75,7 @@ def parse_inputs():
             'Options': {
                 'type': 'object',
                 'properties': {
+                    'Architecture': {'type': 'string'},
                     'Disable Reference Audio': {'type': 'boolean'},
                     'Character': {'type': 'string'},
                     'Pitch Factor': {'type': 'integer'},
