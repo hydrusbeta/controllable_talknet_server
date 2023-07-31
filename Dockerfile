@@ -120,9 +120,12 @@ RUN git reset --hard 5ee364f5bb1fe63fcde2b690507bd7cd89bfe268
 #     sed -i -e '28d;31,32d;329,394d;462,479d' ~/hay_say/controllable_talknet/core/extract.py &&\
 #     ~/hay_say/.venvs/controllable_talknet/bin/pip uninstall -y tensorflow tensorflow-hub crepe
 
-# Create the models directory. The server will place symbolic links in here that point to the actual model files. The
-# VQGAN, Hi-fidelity reconstruction and super-resolution HiFi-GAN models go in here, too.
-RUN mkdir /root/hay_say/controllable_talknet/models
+# Create the models and results directories. The server will place symbolic links in the models directory that point to
+# the actual model files. The VQGAN, Hi-fidelity reconstruction and super-resolution HiFi-GAN models also go in there.
+# Controllable TalkNet will write files in the results directory before controllable_talknet_server transfers them
+# elsewhere.
+RUN mkdir /root/hay_say/controllable_talknet/models && \
+    mkdir /root/hay_say/controllable_talknet/results
 
 # Download SortAnon's hifi-gan fork and checkout a specific commit that is known to work with this docker
 # file and with Hay Say.
