@@ -48,7 +48,7 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install \
 	psola==0.0.1 \
 	wget==3.2 \
 	unidecode==1.2.0 \
-	pysptk==0.1.18 \
+	pysptk==0.2.1 \
 	frozendict==2.0.3 \
 	torch==1.8.1+cu111 \
 	torchvision==0.9.1+cu111 \
