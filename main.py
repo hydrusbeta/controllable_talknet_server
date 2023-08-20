@@ -136,7 +136,7 @@ def prepare_reference_audio(input_filename_sans_extension, disable_reference_aud
 def execute_program(user_text, reference_audio, character, pitch_factor, pitch_options):
     arguments = [
         '--text', user_text,
-        '--character', character,
+        '--custom_model', character,
         *(('--reference_audio', reference_audio) if reference_audio else ()),
         *(('--pitch_factor', str(pitch_factor)) if pitch_factor else ()),
         *(('--pitch_options', *pitch_options) if pitch_options else ())
