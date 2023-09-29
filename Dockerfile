@@ -7,7 +7,7 @@
 FROM nvidia/cuda:11.8.0-base-ubuntu18.04
 ENV TZ=Etc/GMT
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gcc \
     g++ \
