@@ -91,7 +91,7 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
 # Install the dependencies for the Hay Say interface code.
 RUN ~/hay_say/.venvs/controllable_talknet_server/bin/pip install \
     --no-cache-dir \
-    hay-say-common==0.2.0 \
+    hay-say-common==1.0.1 \
     jsonschema==4.17.3
 
 # Download the VQGAN and HiFi-GAN reconstruction models and the super resolution HiFi-GAN model.
@@ -151,4 +151,4 @@ WORKDIR $HOME_DIR/hay_say/controllable_talknet
 RUN ~/hay_say/.venvs/controllable_talknet/bin/python -c "import controllable_talknet"
 
 # Run the Hay Say interface on startup
-CMD ["/bin/sh", "-c", "/root/hay_say/.venvs/controllable_talknet_server/bin/python /root/hay_say/controllable_talknet_server/main.py"]
+CMD ["/bin/sh", "-c", "/root/hay_say/.venvs/controllable_talknet_server/bin/python /root/hay_say/controllable_talknet_server/main.py --cache_implementation file"]
