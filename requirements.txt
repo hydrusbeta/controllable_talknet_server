@@ -1,2 +1,2 @@
-hay_say_common==0.1.0
+hay_say_common==1.0.1
 jsonschema==4.17.3
