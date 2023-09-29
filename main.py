@@ -168,5 +168,5 @@ def parse_arguments():
 if __name__ == '__main__':
     args = parse_arguments()
     cache = select_cache_implementation(args.cache_implementation)
-    register_methods()
+    register_methods(cache)
     app.run(debug=True, host='0.0.0.0', port=6574)
