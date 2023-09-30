@@ -29,14 +29,15 @@ RUN python3.8 -m venv ~/hay_say/.venvs/controllable_talknet; \
 # we're at it to handle modules that use PEP 517, and install cython which is required for building
 # other python packages. Specify a version number for numpy or else it will install one that conflicts
 # with Controllable Talknet's requirements file.
-RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install --no-cache-dir --upgrade wheel pip cython numpy==1.19.5; \
-    ~/hay_say/.venvs/controllable_talknet_server/bin/pip install --no-cache-dir --upgrade wheel pip cython numpy==1.19.5
+RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install --timeout=300 --no-cache-dir --upgrade wheel pip cython numpy==1.19.5; \
+    ~/hay_say/.venvs/controllable_talknet_server/bin/pip install --timeout=300 --no-cache-dir --upgrade wheel pip cython numpy==1.19.5
 
 # Install all python dependencies for controllable_talknet.
 # Note: This is done *before* cloning the repository because the dependencies are likely to change less often than the
 # ControllableTalkNet code itself. Cloning the repo after installing the requirements helps the Docker cache optimize
 # build time. See https://docs.docker.com/build/cache
 RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install \
+    --timeout=300 \
     --no-cache-dir \
     --extra-index-url https://download.pytorch.org/whl/cu111 \
     numpy==1.19.5 \
@@ -86,13 +87,14 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/pip install \
 # against the wrong version of numpy when numba (a dependency of NeMo) is installed, so we must recompile
 # it. This is a known issue described here: https://github.com/NVIDIA/NeMo/issues/3658
 RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
-    ~/hay_say/.venvs/controllable_talknet/bin/python -m pip install --no-cache-dir pesq==0.0.2
+    ~/hay_say/.venvs/controllable_talknet/bin/python -m pip install --timeout=300 --no-cache-dir pesq==0.0.2
 
 # Install the dependencies for the Hay Say interface code.
 RUN ~/hay_say/.venvs/controllable_talknet_server/bin/pip install \
+    --timeout=300 \
     --no-cache-dir \
     hay-say-common==1.0.1 \
-    jsonschema==4.17.3
+    jsonschema==4.19.1
 
 # Download the VQGAN and HiFi-GAN reconstruction models and the super resolution HiFi-GAN model.
 RUN mkdir -p ~/hay_say/temp_downloads/pretrained_models && \

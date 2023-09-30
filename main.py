@@ -89,7 +89,7 @@ def register_methods(cache):
         try:
             jsonschema.validate(instance=request.json, schema=schema)
         except ValidationError as e:
-            raise BadInputException(e.Message)
+            raise BadInputException(e.message)
 
         user_text = request.json['Inputs']['User Text']
         input_filename_sans_extension = request.json['Inputs']['User Audio']
