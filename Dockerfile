@@ -93,7 +93,7 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
 RUN ~/hay_say/.venvs/controllable_talknet_server/bin/pip install \
     --timeout=300 \
     --no-cache-dir \
-    hay-say-common==1.0.1 \
+    hay_say_common==1.0.2 \
     jsonschema==4.19.1
 
 # Download the VQGAN and HiFi-GAN reconstruction models and the super resolution HiFi-GAN model.
