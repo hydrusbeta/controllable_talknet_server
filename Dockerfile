@@ -6,7 +6,7 @@
 # Cuda 11.8 supports compute capability 3.5 through 9.0
 FROM nvidia/cuda:11.8.0-base-ubuntu18.04
 ENV TZ=Etc/GMT
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone.
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gcc \
@@ -93,7 +93,7 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
 RUN ~/hay_say/.venvs/controllable_talknet_server/bin/pip install \
     --timeout=300 \
     --no-cache-dir \
-    hay_say_common==1.0.2 \
+    hay_say_common==1.0.7 \
     jsonschema==4.19.1
 
 # Download the VQGAN and HiFi-GAN reconstruction models and the super resolution HiFi-GAN model.
@@ -144,6 +144,10 @@ RUN mv ~/hay_say/temp_downloads/pretrained_models/* /root/hay_say/controllable_t
 
 # Download the Hay Say Interface code.
 RUN git clone -b main --single-branch https://github.com/hydrusbeta/controllable_talknet_server ~/hay_say/controllable_talknet_server/
+
+# Modify the input text to eliminate repeated periods separated by any number of spaces, to avoid a bug in NeMo:
+RUN sed -i 's/input.replace(".", ". ")/re.sub(r"\.(\s*\.)*", ". ", input)/' /root/hay_say/controllable_talknet/core/extract.py && \
+    sed -i '1 i\# This file has been modified for the Hay Say project around November 2023.\n\n# As required by the license for Controllable TalkNet, this modified version of\n# Controllable TalkNet is released under the GNU Affero General Public License\n# along with the additional conditions under section 7 of the original license,\n# which can be found here:\n#   https://github.com/SortAnon/ControllableTalkNet/blob/128b1c18b4d77a1726414bab764268d3e6dd68ca/LICENSE\n\n' /root/hay_say/controllable_talknet/core/extract.py
 
 # Controllable Talknet downloads some models, e.g. the NeMo TTS phonemes model, when the 
 # controllable_talknet module is first loaded. Let's Load it ahead of time now so the user doesn't need 
