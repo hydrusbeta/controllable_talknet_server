@@ -6,17 +6,17 @@ import os.path
 import subprocess
 import traceback
 
+import hay_say_common as hsc
 import jsonschema
 import soundfile
 from flask import Flask, request
-from hay_say_common import *
 from hay_say_common.cache import Stage
 from jsonschema.exceptions import ValidationError
 
 ARCHITECTURE_NAME = 'controllable_talknet'
-ARCHITECTURE_ROOT = os.path.join(ROOT_DIR, ARCHITECTURE_NAME)
+ARCHITECTURE_ROOT = os.path.join(hsc.ROOT_DIR, ARCHITECTURE_NAME)
 RESULTS_DIR = os.path.join(ARCHITECTURE_ROOT, 'results')
-PYTHON_EXECUTABLE = os.path.join(ROOT_DIR, '.venvs', 'controllable_talknet', 'bin', 'python')
+PYTHON_EXECUTABLE = os.path.join(hsc.ROOT_DIR, '.venvs', 'controllable_talknet', 'bin', 'python')
 INFERENCE_CODE_PATH = os.path.join(ARCHITECTURE_ROOT, 'command_line_interface.py')
 
 TALKNET_INPUT_FORMAT, TALKNET_INPUT_EXTENSION = 'WAV', '.wav'
@@ -38,14 +38,14 @@ def register_methods(cache):
                                                       session_id)
             link_model_path(character)
             execute_program(user_text, reference_audio, character, pitch_factor, pitch_options, gpu_id)
-            copy_output_audio(get_singleton_file(RESULTS_DIR), output_filename_sans_extension, cache, session_id)
-            clean_up(get_temp_files())
+            copy_output_audio(hsc.get_singleton_file(RESULTS_DIR), output_filename_sans_extension, cache, session_id)
+            hsc.clean_up(get_temp_files())
         except BadInputException:
             code = 400
             message = traceback.format_exc()
         except Exception:
             code = 500
-            message = construct_full_error_message(ARCHITECTURE_ROOT, get_temp_files())
+            message = hsc.construct_full_error_message(ARCHITECTURE_ROOT, get_temp_files())
 
         # The message may contain quotes and curly brackets which break JSON syntax, so base64-encode the message.
         message = base64.b64encode(bytes(message, 'utf-8')).decode('utf-8')
@@ -54,6 +54,10 @@ def register_methods(cache):
         }
 
         return json.dumps(response, sort_keys=True, indent=4), code
+
+    @app.route('/gpu-info', methods=['GET'])
+    def get_gpu_info():
+        return hsc.get_gpu_info_from_another_venv(PYTHON_EXECUTABLE)
 
     def parse_inputs():
         schema = {
@@ -116,9 +120,9 @@ def register_methods(cache):
 
     def link_model_path(character):
         """Create a symbolic link to the model folder in the location where Controllable TalkNet expects to find it."""
-        character_dir = get_model_path(ARCHITECTURE_NAME, character)
+        character_dir = hsc.character_dir(ARCHITECTURE_NAME, character)
         symlink_dir = os.path.join(ARCHITECTURE_ROOT, 'models', character)
-        create_link(character_dir, symlink_dir)
+        hsc.create_link(character_dir, symlink_dir)
 
     def prepare_reference_audio(input_filename_sans_extension, disable_reference_audio, cache, session_id):
         """Temporarily copy the input file to the location where Controllable Talknet expects to find it."""
@@ -141,18 +145,18 @@ def register_methods(cache):
             *(('--pitch_factor', str(pitch_factor)) if pitch_factor else ()),
             *(('--pitch_options', *pitch_options) if pitch_options else ())
         ]
-        env = select_hardware(gpu_id)
+        env = hsc.select_hardware(gpu_id)
         subprocess.run([PYTHON_EXECUTABLE, INFERENCE_CODE_PATH, *arguments], env=env)
 
     def get_temp_files():
-        reference_audios = get_files_with_extension(ARCHITECTURE_ROOT, TALKNET_INPUT_EXTENSION)
+        reference_audios = hsc.get_files_with_extension(ARCHITECTURE_ROOT, TALKNET_INPUT_EXTENSION)
         output_files = [os.path.join(RESULTS_DIR, file) for file in os.listdir(RESULTS_DIR)]
         return reference_audios + output_files
 
     def copy_output_audio(input_path, output_filename_sans_extension, cache, session_id):
         """Copy the output file to the location where Hay Say expects to find it."""
         try:
-            array, samplerate = read_audio(input_path)
+            array, samplerate = hsc.read_audio(input_path)
             cache.save_audio_to_cache(Stage.OUTPUT, session_id, output_filename_sans_extension, array, samplerate)
         except Exception as e:
             raise Exception("Unable to copy file from Hay Say's audio cache to controllable_talknet's root directory.") \
@@ -161,12 +165,12 @@ def register_methods(cache):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog='main.py', description='A webservice interface for TTS inference with Controllable Talknet')
-    parser.add_argument('--cache_implementation', default='file', choices=cache_implementation_map.keys(), help='Selects an implementation for the audio cache, e.g. saving them to files or to a database.')
+    parser.add_argument('--cache_implementation', default='file', choices=hsc.cache_implementation_map.keys(), help='Selects an implementation for the audio cache, e.g. saving them to files or to a database.')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_arguments()
-    cache = select_cache_implementation(args.cache_implementation)
+    cache = hsc.select_cache_implementation(args.cache_implementation)
     register_methods(cache)
     app.run(debug=True, host='0.0.0.0', port=6574)
