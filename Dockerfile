@@ -105,14 +105,14 @@ RUN ~/hay_say/.venvs/controllable_talknet/bin/python -m pip uninstall -y pesq; \
 RUN ~/hay_say/.venvs/controllable_talknet_server/bin/pip install \
     --timeout=300 \
     --no-cache-dir \
-    hay_say_common==1.0.7 \
+    hay_say_common==1.0.8 \
     jsonschema==4.19.1
 
 # Clone controllable_talknet and checkout a specific commit that is known to work with this docker
 # file and with Hay Say.
 RUN git clone -b main --single-branch -q https://github.com/SortAnon/ControllableTalkNet ~/hay_say/controllable_talknet
 WORKDIR $HOME_DIR/hay_say/controllable_talknet
-RUN git reset --hard 5ee364f5bb1fe63fcde2b690507bd7cd89bfe268
+RUN git reset --hard a6f2b53442fb58925a652aae410fa048321d8359
 
 # Clone SortAnon's hifi-gan fork and checkout a specific commit that is known to work with this docker
 # file and with Hay Say.
@@ -121,11 +121,7 @@ WORKDIR $HOME_DIR/hay_say/controllable_talknet/hifi-gan
 RUN git reset --hard 42c270d4f79a6966edf92ef9ee17e2bc8b9977b5
 
 # Clone the Hay Say Interface code.
-RUN git clone -b database-cache --single-branch https://github.com/hydrusbeta/controllable_talknet_server ~/hay_say/controllable_talknet_server/
-
-# Add command line functionality to Controllable TalkNet.
-RUN git clone https://github.com/hydrusbeta/controllable_talknet_command_line ~/hay_say/controllable_talknet_command_line && \
-    cp ~/hay_say/controllable_talknet_command_line/command_line_interface.py ~/hay_say/controllable_talknet/;
+RUN git clone -b main --single-branch https://github.com/hydrusbeta/controllable_talknet_server ~/hay_say/controllable_talknet_server/
 
 # Remove all usages of tensorflow. The presence of Tensorflow in the code is known to cause errors with at least one
 # low-end GPU.

@@ -17,7 +17,7 @@ ARCHITECTURE_NAME = 'controllable_talknet'
 ARCHITECTURE_ROOT = os.path.join(hsc.ROOT_DIR, ARCHITECTURE_NAME)
 RESULTS_DIR = os.path.join(ARCHITECTURE_ROOT, 'results')
 PYTHON_EXECUTABLE = os.path.join(hsc.ROOT_DIR, '.venvs', 'controllable_talknet', 'bin', 'python')
-INFERENCE_CODE_PATH = os.path.join(ARCHITECTURE_ROOT, 'command_line_interface.py')
+INFERENCE_CODE_PATH = os.path.join(ARCHITECTURE_ROOT, 'controllable_talknet_cli.py')
 
 TALKNET_INPUT_FORMAT, TALKNET_INPUT_EXTENSION = 'WAV', '.wav'
 REFERENCE_PREFIX = 'Reference_'
